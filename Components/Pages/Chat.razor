@@ -7,7 +7,9 @@
     private string username = "my user";
     private string chat_string = "asdf";
     private string[] lines = ["asdfasdfasdfasdfasdfasdffsda", "asdfasdf", "asdfasdf"];
-    private ClientCommunication comm = new ClientCommunication();
+    private void Send(){
+        Console.WriteLine("asdf");
+    }
 
 }
 
@@ -15,6 +17,24 @@
 {
     <div>line</div>
 }
+
+<link rel="stylesheet" href="css.css">
+<div class="chat-container">
+    <div class="chat-box">
+        <h3>Czat 1</h3>
+        <div class="messages" id="chat1"></div>
+        <input type="text" id="input1" placeholder="Wpisz wiadomość...">
+        <button onclick="sendMessage('input1', 'chat1')">Wyślij</button>
+    </div>
+
+    <div class="chat-box">
+        <h3>Czat 2</h3>
+        <div class="messages" id="chat2"></div>
+        <input type="text" id="input2" placeholder="Wpisz wiadomość...">
+        <button onclick="sendMessage('input2', 'chat2')">Wyślij</button>
+    </div>
+</div>
+
 
 
 <button class="btn btn-primary" @onclick="Send">Send</button>
