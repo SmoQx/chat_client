@@ -1,0 +1,15 @@
+@page "/chat"
+@rendermode InteractiveServer
+
+<PageTitle>Chat</PageTitle>
+
+@code {
+    private string chat_string = "asdf";
+
+    private void Send()
+    {
+        Console.WriteLine("asdf");   
+    }
+}
+
+<button class="btn btn-primary" @onclick="Send">Send</button>
