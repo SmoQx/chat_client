@@ -10,17 +10,8 @@ namespace ClientCommunication
     {
         static byte[] result = new byte[1024];
 
-        public static void StartClient(IPAddress ip, int port)
+        public static string SendMessage(IPAddress ip, int port, string user_name, string message)
         {
-            // Nazwa użytkownika
-            string name;
-            do
-            {
-                Console.Write("Podaj nazwę użytkownika: ");
-                name = Console.ReadLine();
-            } while (string.IsNullOrWhiteSpace(name));
-
-            // Utworzenie połączenia z serwerem
             Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
             IPEndPoint point = new IPEndPoint(ip, port);
 
@@ -33,53 +24,54 @@ namespace ClientCommunication
             {
                 Console.WriteLine("Nie udało się połączyć z serwerem! Szczegóły: " + ex.Message);
                 Console.ReadLine();
-                return;
+                return "Error";
             }
 
             // Odebranie początkowej wiadomości od serwera
-            int receiveLength = socketClient.Receive(result);
-            Console.WriteLine("Wiadomość od serwera: {0}", Encoding.ASCII.GetString(result, 0, receiveLength));
 
             // Wysyłanie wiadomości
-            while (true)
+
+            // Utworzenie obiektu do wysłania jako JSON
+            var jsonMessage = new
             {
-                Console.Write("Wpisz wiadomość (lub wpisz 'exit' aby zakończyć): ");
-                string userMessage = Console.ReadLine();
+                username = user_name,
+                message = message,
+                timestamp = DateTime.Now
+            };
 
-                if (userMessage.Equals("exit", StringComparison.OrdinalIgnoreCase))
-                    break;
+            // Serializacja obiektu do formatu JSON
+            string json = JsonSerializer.Serialize(jsonMessage);
+            byte[] buffer = Encoding.ASCII.GetBytes(json);
 
-                // Utworzenie obiektu do wysłania jako JSON
-                var jsonMessage = new
-                {
-                    username = name,
-                    message = userMessage,
-                    timestamp = DateTime.Now
-                };
-
-                // Serializacja obiektu do formatu JSON
-                string json = JsonSerializer.Serialize(jsonMessage);
-                byte[] buffer = Encoding.ASCII.GetBytes(json);
-
-                try
-                {
-                    // Wysłanie wiadomości w postaci JSON do serwera
-                    socketClient.Send(buffer);
-                    Console.WriteLine("Wysłano wiadomość: " + json);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Błąd wysyłania wiadomości: " + ex.Message);
-                    break;
-                }
+            try
+            {
+                // Wysłanie wiadomości w postaci JSON do serwera
+                socketClient.Send(buffer);
+                Console.WriteLine("Wysłano wiadomość: " + json);
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Błąd wysyłania wiadomości: " + ex.Message);
+            }
+
+
+            Console.WriteLine("Połączenie zakończone. Naciśnij Enter, aby wyjść.");
+            Console.ReadLine();
+
+            int receiveLength = socketClient.Receive(result);
+            Console.WriteLine("Wiadomość od serwera: {0}", Encoding.ASCII.GetString(result, 0, receiveLength));
 
             // Zamknięcie połączenia
             socketClient.Shutdown(SocketShutdown.Both);
             socketClient.Close();
+            
+            string return_result = "";
 
-            Console.WriteLine("Połączenie zakończone. Naciśnij Enter, aby wyjść.");
-            Console.ReadLine();
+            if(receiveLength > 0){
+                return_result = Encoding.ASCII.GetString(result, 0, receiveLength);
+            }
+
+            return return_result;
         }
     }
 }
