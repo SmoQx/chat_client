@@ -10,10 +10,12 @@ namespace ClientCommunication
     {
         static byte[] result = new byte[1024];
 
-        public static string SendMessage(IPAddress ip, int port, string user_name, string message)
+        public static string SendMessage(string ip, int port, string user_name, string message)
         {
+            
+            System.Net.IPAddress ipaddress = System.Net.IPAddress.Parse("127.0.0.1");
             Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint point = new IPEndPoint(ip, port);
+            IPEndPoint point = new IPEndPoint(ipaddress, port);
 
             try
             {

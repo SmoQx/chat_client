@@ -5,16 +5,13 @@
 <PageTitle>Chat</PageTitle>
 
 @code {
-
+    private System.Net.IPAddress ipaddress;
+    private ClientSocket message_recieved;
     private string username = "my user";
     private string chat_string = "asdf";
     private string[] lines = ["asdfasdfasdfasdfasdfasdffsda", "asdfasdf", "asdfasdf"];
-    private void Send(){
-        Console.WriteLine("asdf");
-    }
-    ClientSocket message_recieved = new ClientSocket();
+    SendMessage("", 5092, "user_name", "asdf");
 
-    string message = message_recieved.SendMessage("127.0.0.1", 5092, "user_name", "asdf");
 
 }
 
