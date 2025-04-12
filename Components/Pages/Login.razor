@@ -40,7 +40,7 @@
              Message = "Zalogowano poprawnie (test)";
              user.SetUserName(LoginInput);
              IsError = false;
-             // NavigationManager.NavigateTo("/");
+             NavigationManager.NavigateTo("/chat");
         } else if (!string.IsNullOrEmpty(LoginInput) || !string.IsNullOrEmpty(PasswordInput)) {
              Message = "Błędny login lub hasło (test)";
              IsError = true;
