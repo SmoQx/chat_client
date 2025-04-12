@@ -1,18 +1,33 @@
 @page "/chat"
 @rendermode InteractiveServer
 @using ClientCommunication
+@using System.Text.Json
+@inject NavigationManager Navigation
+@using ChatMessageNamespace
+
 
 <PageTitle>Chat</PageTitle>
 
+@if(false){
+    Navigation.NavigateTo("/");
+}
+
 @code {
     private System.Net.IPAddress ipaddress;
-    private ClientSocket message_recieved;
     private string username = "my user";
     private string chat_string = "asdf";
-    private string[] lines = ["asdfasdfasdfasdfasdfasdffsda", "asdfasdf", "asdfasdf"];
-//    SendMessage("", 5092, "user_name", "asdf");
+    private string ServerResponse = "";
+    private List<ChatMessage> Messages = new();
 
-
+    private async Task SendMessageToServer()
+    {
+        ServerResponse = await ClientSocket.SendMessage("", 1234, username, chat_string);
+        if (!string.IsNullOrWhiteSpace(ServerResponse))
+        {
+            var message = JsonSerializer.Deserialize<ChatMessage>(ServerResponse);
+        }
+    }
+    
 }
 
 <link rel="stylesheet" href="css.css">
