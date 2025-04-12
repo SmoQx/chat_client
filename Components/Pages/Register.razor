@@ -1,0 +1,104 @@
+@page "/register"
+@rendermode InteractiveServer
+@using System.IO
+@using System.Text.Json
+@inject IWebHostEnvironment Environment 
+@inject NavigationManager NavigationManager 
+
+<div class="register-container">
+
+    <h1>Strona Rejestracji</h1>
+
+    <form class="pure-form" @onsubmit="HandleRegister" @onsubmit:preventDefault>
+
+        <input @bind="registerModel.Username" type="text" placeholder="Nazwa u¿ytkownika" required />
+        <input @bind="registerModel.Password" type="password" placeholder="Has³o" required />
+        <input @bind="registerModel.ConfirmPassword" type="password" placeholder="Powtórz has³o" required />
+
+        <button type="submit"><i class="fa fa-user-plus"></i> Zarejestruj</button>
+    </form>
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p class="register-message @(IsError ? "error" : "success")">@Message</p> 
+    }
+
+</div>
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+    private string Message { get; set; } = "";
+    private bool IsError { get; set; }
+
+    private async Task HandleRegister()
+    {
+        Message = "";
+        IsError = false;
+
+        if (registerModel.Password != registerModel.ConfirmPassword)
+        {
+            Message = "Has³a nie s¹ zgodne!";
+            IsError = true;
+            return; // Zakoñcz, jeœli has³a siê nie zgadzaj¹
+        }
+
+        if (string.IsNullOrWhiteSpace(registerModel.Username) || registerModel.Password.Length < 3) // Przyk³adowa walidacja
+        {
+            Message = "Nazwa u¿ytkownika i has³o (min 3 znaki) s¹ wymagane";
+            IsError = true;
+            return;
+        }
+
+        var userToSave = new { Username = registerModel.Username, Password = registerModel.Password };
+
+        try
+        {
+            string filePath = Path.Combine(Environment.ContentRootPath, "users.json");
+
+            List<object> userList;
+            if (File.Exists(filePath))
+            {
+                string existingJson = await File.ReadAllTextAsync(filePath);
+                userList = JsonSerializer.Deserialize<List<object>>(existingJson) ?? new List<object>();
+            }
+            else
+            {
+                userList = new List<object>();
+            }
+            if (userList.Any(u => (u as JsonElement?).Value.TryGetProperty("Username", out var name) && name.GetString() == registerModel.Username)) // pobiera z pliku info czy user istnieje
+            {
+                Message = "U¿ytkownik o tej nazwie ju¿ istnieje.";
+                IsError = true;
+                return;
+            }
+
+
+            userList.Add(userToSave);
+
+            string json = JsonSerializer.Serialize(userList, new JsonSerializerOptions { WriteIndented = true }); // WriteIndented dla ³adnego formatowania
+            await File.WriteAllTextAsync(filePath, json);
+
+            Message = "Rejestracja zakoñczona pomyœlnie!";
+            IsError = false;
+
+            // registerModel = new RegisterModel();
+
+            await Task.Delay(1500); // Krótkie opóŸnienie przed przekierowaniem
+            NavigationManager.NavigateTo("/login");
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"B³¹d podczas zapisu do pliku JSON: {ex.Message}");
+            Message = "Wyst¹pi³ b³¹d podczas rejestracji.";
+            IsError = true;
+        }
+    }
+
+    public class RegisterModel
+    {
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string ConfirmPassword { get; set; } = "";
+    }
+}
