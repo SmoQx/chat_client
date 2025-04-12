@@ -1,5 +1,6 @@
 @page "/chat"
 @rendermode InteractiveServer
+@inject YourUserNamespace.User user
 @using ClientCommunication
 @using System.Text.Json
 @inject NavigationManager Navigation
@@ -8,8 +9,8 @@
 
 <PageTitle>Chat</PageTitle>
 
-@if(false){
-    Navigation.NavigateTo("/");
+@if (!user.CheckUserName()){
+    Navigation.NavigateTo("/login");
 }
 
 @code {

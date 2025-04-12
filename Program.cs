@@ -1,5 +1,6 @@
 using chat_client.Components;
 using chat_client.Services;
+using YourUserNamespace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<User>();
+builder.Services.AddSingleton<User>();
 
 var app = builder.Build();
 
