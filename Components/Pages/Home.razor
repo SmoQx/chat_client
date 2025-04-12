@@ -1,14 +1,40 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
 
-<head>
-  <meta charset="UTF-8">
-</head>
+<PageTitle>Strona Główna</PageTitle>
 
+<div class="home-container">
 
-<PageTitle>Home</PageTitle>
+    <h1>Witaj w Aplikacji Czatowej!</h1>
 
-<h1>Witaj, w najlepszej apce do czatowania!!!!!!</h1>
+    <p class="welcome-text">Aby kontynuować, zaloguj się lub utwórz nowe konto.</p>
 
-KLiknij w zakładke i sprawdz sam!<br>
-<br>
-PS. Na pewno twoje dane są bezpieczne ;*
+    <div class="action-buttons-container">
+
+        <button class="action-button login-button" @onclick="NavigateToLogin">
+            <i class="fa fa-sign-in-alt"></i>
+            Zaloguj się
+        </button>
+
+        <button class="action-button register-button" @onclick="NavigateToRegister">
+            <i class="fa fa-user-plus"></i>
+            Zarejestruj się
+        </button>
+
+    </div>
+</div>
+<p class="little-footer">
+    Na pewno twoje dane są bezpieczne &lt;3
+</p>
+@code {
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    private void NavigateToRegister()
+    {
+        NavigationManager.NavigateTo("/register");
+    }
+}
