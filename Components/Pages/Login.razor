@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject Services.IAuthService AuthService 
 @inject NavigationManager NavigationManager 
+@inject YourUserNamespace.User user
 
 <div class="login-container">
     <h1>Logowanie</h1>
@@ -37,6 +38,7 @@
         // ---- Przykładowa logika do testowania bez serwisu ----
         if (LoginInput == "admin" && PasswordInput == "password") {
              Message = "Zalogowano poprawnie (test)";
+             user.SetUserName(LoginInput);
              IsError = false;
              // NavigationManager.NavigateTo("/");
         } else if (!string.IsNullOrEmpty(LoginInput) || !string.IsNullOrEmpty(PasswordInput)) {

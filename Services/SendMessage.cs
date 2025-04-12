@@ -54,5 +54,36 @@ namespace ClientCommunication
 
             return receiveLength > 0 ? Encoding.ASCII.GetString(result, 0, receiveLength) : "No response";
         }
+
+        private static bool CheckAuthorizationToken(Socket socket, string token)
+        {
+            var tokenObject = new
+            {
+                token = token
+            };
+
+            string jsonToken = JsonSerializer.Serialize(tokenObject);
+            byte[] tokenBuffer = Encoding.ASCII.GetBytes(jsonToken);
+
+            try
+            {
+                // Wysłanie tokenu do serwera.
+                socket.Send(tokenBuffer);
+
+
+                // Odebranie odpowiedzi od serwera.
+                byte[] authResponseBuffer = new byte[1024];
+                int responseLength = socket.Receive(authResponseBuffer);
+                string response = Encoding.ASCII.GetString(authResponseBuffer, 0, responseLength);
+
+                // Jeżeli serwer zwróci "True" (bez względu na wielkość liter), token jest uznawany za poprawny.
+                return response.Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Błąd podczas weryfikacji tokenu: " + ex.Message);
+                return false;
+            }
+        }
     }
 }
