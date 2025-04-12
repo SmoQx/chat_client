@@ -10,70 +10,120 @@ namespace ClientCommunication
     {
         static byte[] result = new byte[1024];
 
-        public static string SendMessage(string ip, int port, string user_name, string message)
+        public static void StartClient(IPAddress ip, int port)
         {
-            
-            System.Net.IPAddress ipaddress = System.Net.IPAddress.Parse("127.0.0.1");
+            // Pobranie nazwy użytkownika.
+            string username;
+            do
+            {
+                Console.Write("Podaj nazwę użytkownika: ");
+                username = Console.ReadLine();
+            } while (string.IsNullOrWhiteSpace(username));
+
+            // Inicjalizacja tokenu autoryzacyjnego (Niech grupy od serwera i autoryzacji się dogadają czy ma być np. stała wartość, czy odczyt z pliku/konfiguracji)
+            string authToken = "SECRET_TOKEN";
+
+            // Utworzenie połączenia z serwerem.
             Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint point = new IPEndPoint(ipaddress, port);
+            IPEndPoint endpoint = new IPEndPoint(ip, port);
 
             try
             {
-                socketClient.Connect(point);
+                socketClient.Connect(endpoint);
                 Console.WriteLine("Pomyślnie połączono z serwerem!");
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Nie udało się połączyć z serwerem! Szczegóły: " + ex.Message);
                 Console.ReadLine();
-                return "Error";
+                return;
             }
 
-            // Odebranie początkowej wiadomości od serwera
+            // Odebranie początkowej wiadomości od serwera.
+            int received = socketClient.Receive(result);
+            Console.WriteLine("Wiadomość od serwera: {0}", Encoding.ASCII.GetString(result, 0, received));
 
-            // Wysyłanie wiadomości
-
-            // Utworzenie obiektu do wysłania jako JSON
-            var jsonMessage = new
+            // Weryfikacja tokenu autoryzacyjnego w tle.
+            if (!CheckAuthorizationToken(socketClient, authToken))
             {
-                username = user_name,
-                message = message,
-                timestamp = DateTime.Now
-            };
-
-            // Serializacja obiektu do formatu JSON
-            string json = JsonSerializer.Serialize(jsonMessage);
-            byte[] buffer = Encoding.ASCII.GetBytes(json);
-
-            try
-            {
-                // Wysłanie wiadomości w postaci JSON do serwera
-                socketClient.Send(buffer);
-                Console.WriteLine("Wysłano wiadomość: " + json);
+                Console.WriteLine("Token autoryzacyjny jest niepoprawny. Zamykanie połączenia.");
+                socketClient.Shutdown(SocketShutdown.Both);
+                socketClient.Close();
+                return;
             }
-            catch (Exception ex)
+            Console.WriteLine("Token autoryzacyjny zaakceptowany.");
+
+            // Główna pętla wysyłania wiadomości.
+            while (true)
             {
-                Console.WriteLine("Błąd wysyłania wiadomości: " + ex.Message);
+                Console.Write("Wpisz wiadomość (lub wpisz 'exit', aby zakończyć): ");
+                string userMessage = Console.ReadLine();
+
+                if (userMessage.Equals("exit", StringComparison.OrdinalIgnoreCase))
+                    break;
+
+                // Utworzenie obiektu JSON z nazwą użytkownika, wiadomością oraz znacznikiem czasu.
+                var jsonMessage = new
+                {
+                    username = username,
+                    message = userMessage,
+                    timestamp = DateTime.Now
+                };
+
+                // Serializacja obiektu do JSON.
+                string json = JsonSerializer.Serialize(jsonMessage);
+                byte[] buffer = Encoding.ASCII.GetBytes(json);
+
+                try
+                {
+                    // Wysłanie wiadomości w formacie JSON do serwera.
+                    socketClient.Send(buffer);
+                    Console.WriteLine("Wysłano wiadomość: " + json);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Błąd wysyłania wiadomości: " + ex.Message);
+                    break;
+                }
             }
 
+            // Zamknięcie połączenia.
+            socketClient.Shutdown(SocketShutdown.Both);
+            socketClient.Close();
 
             Console.WriteLine("Połączenie zakończone. Naciśnij Enter, aby wyjść.");
             Console.ReadLine();
+        }
+        // Funkcja sprawdzająca token autoryzacyjny.
+        // Token jest przesyłany w formacie JSON do serwera, a następnie oczekuje na wartość True.
+        private static bool CheckAuthorizationToken(Socket socket, string token)
+        {
+            var tokenObject = new
+            {
+                token = token
+            };
 
-            int receiveLength = socketClient.Receive(result);
-            Console.WriteLine("Wiadomość od serwera: {0}", Encoding.ASCII.GetString(result, 0, receiveLength));
+            string jsonToken = JsonSerializer.Serialize(tokenObject);
+            byte[] tokenBuffer = Encoding.ASCII.GetBytes(jsonToken);
 
-            // Zamknięcie połączenia
-            socketClient.Shutdown(SocketShutdown.Both);
-            socketClient.Close();
-            
-            string return_result = "";
+            try
+            {
+                // Wysłanie tokenu do serwera.
+                socket.Send(tokenBuffer);
 
-            if(receiveLength > 0){
-                return_result = Encoding.ASCII.GetString(result, 0, receiveLength);
+                // Odebranie odpowiedzi od serwera.
+                byte[] authResponseBuffer = new byte[1024];
+                int responseLength = socket.Receive(authResponseBuffer);
+                string response = Encoding.ASCII.GetString(authResponseBuffer, 0, responseLength);
+
+                // Jeżeli serwer zwróci "True" (bez względu na wielkość liter), token jest uznawany za poprawny.
+                return response.Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
             }
-
-            return return_result;
+            catch (Exception ex)
+            {
+                Console.WriteLine("Błąd podczas weryfikacji tokenu: " + ex.Message);
+                return false;
+            }
         }
     }
 }
