@@ -22,9 +22,11 @@
 
     private async Task SendMessageToServer()
     {
-        user.SetUserName(User);
+        User = user.UserName;
         Console.WriteLine(chat_input);
+        Console.WriteLine(User);
         ServerResponse = await ClientSocket.SendMessage("", 1234, User, chat_input);
+        chat_input = "";
         /*
         if (!string.IsNullOrWhiteSpace(ServerResponse))
         {
