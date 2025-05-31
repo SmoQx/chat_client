@@ -14,19 +14,23 @@
 }
 
 @code {
+    private string chat_input { get; set; } = "";
     private System.Net.IPAddress ipaddress;
-    private string username = "my user";
-    private string chat_string = "asdf";
+    private string User { get; set; } = "";
     private string ServerResponse = "";
     private List<ChatMessage> Messages = new();
 
     private async Task SendMessageToServer()
     {
-        ServerResponse = await ClientSocket.SendMessage("", 1234, username, chat_string);
+        user.SetUserName(User);
+        Console.WriteLine(chat_input);
+        ServerResponse = await ClientSocket.SendMessage("", 1234, User, chat_input);
+        /*
         if (!string.IsNullOrWhiteSpace(ServerResponse))
         {
             var message = JsonSerializer.Deserialize<ChatMessage>(ServerResponse);
         }
+        */
     }
     
 }
@@ -36,14 +40,8 @@
     <div class="chat-box">
         <h3>Czat 1</h3>
         <div class="messages" id="chat1"></div>
-        <input type="text" id="input1" placeholder="Wpisz wiadomość...">
-        <button onclick="sendMessage('input1', 'chat1')">Wyślij</button>
+        <input @bind="chat_input" type="text" id="input1" placeholder="Wpisz wiadomość...">
+        <button @onclick="SendMessageToServer">Wyślij</button>
     </div>
-    
-    <div class="chat-box">
-        <h3>Czat 2</h3>
-        <div class="messages" id="chat2"></div>
-        <input type="text" id="input2" placeholder="Wpisz wiadomość...">
-        <button onclick="sendMessage('input2', 'chat2')">Wyślij</button>
-    </div>
+
 </div>
