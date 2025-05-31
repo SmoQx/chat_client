@@ -1,6 +1,7 @@
 @page "/login"
 @rendermode InteractiveServer
-@inject Services.IAuthService AuthService 
+@using Services
+@inject Services.AuthService AuthService 
 @inject NavigationManager NavigationManager 
 @inject YourUserNamespace.User user
 
@@ -36,7 +37,7 @@
         Console.WriteLine($"Próba logowania: Login: {LoginInput}, Password: {PasswordInput}");
 
         // ---- Przykładowa logika do testowania bez serwisu ----
-        if (LoginInput == "admin" && PasswordInput == "password") {
+        if (await AuthService.ValidateCredentialsAsync(LoginInput, PasswordInput)) {
              Message = "Zalogowano poprawnie (test)";
              user.SetUserName(LoginInput);
              IsError = false;
