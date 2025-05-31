@@ -2,13 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace ChatMessageNamespace
 {
-    public struct ChatMessage
+    public class ChatMessage
     {
-        [JsonPropertyName("username")]
-        public string Username { get; set; }
-        [JsonPropertyName("message")]
-        public string Message { get; set; }
-        [JsonPropertyName("timestamp")]
+        public string User { get; set; }
+        public string Content { get; set; }
         public DateTime Timestamp { get; set; }
     }
 }

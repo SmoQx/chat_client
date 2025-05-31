@@ -8,7 +8,12 @@
 <div class="chat-container">
     <div class="chat-box">
         <h3>Czat 1</h3>
-        <div class="messages" id="chat1"></div>
+        <div class="messages" id="chat1">
+            @foreach (var message in Messages)
+            {
+                <div><strong>@message.User:</strong> @message.Content</div>
+            }
+        </div>
         <input type="text" id="input1" placeholder="Wpisz wiadomość...">
         <button onclick="sendMessage('input1', 'chat1')">Wyślij</button>
     </div>

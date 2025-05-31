@@ -6,12 +6,27 @@
 @inject NavigationManager Navigation
 @using ChatMessageNamespace
 
-
 <PageTitle>Chat</PageTitle>
 
-@if (!user.CheckUserName()){
+@if (!user.CheckUserName())
+{
     Navigation.NavigateTo("/login");
 }
+
+<link rel="stylesheet" href="css.css">
+<div class="chat-container">
+    <div class="chat-box">
+        <h3>Czat 1</h3>
+        <div class="messages" id="chat1">
+            @foreach (var message in Messages)
+            {
+                <div><strong>@message.User:</strong> @message.Content</div>
+            }
+        </div>
+        <input @bind="chat_input" @onkeyup="HandleEnterKey" type="text" id="input1" placeholder="Wpisz wiadomość...">
+        <button @onclick="SendMessageToServer">Wyślij</button>
+    </div>
+</div>
 
 @code {
     private string chat_input { get; set; } = "";
@@ -20,30 +35,61 @@
     private string ServerResponse = "";
     private List<ChatMessage> Messages = new();
 
+    protected override void OnInitialized()
+    {
+        if (user.CheckUserName())
+        {
+            User = user.UserName;
+        }
+    }
+
     private async Task SendMessageToServer()
     {
-        User = user.UserName;
-        Console.WriteLine(chat_input);
-        Console.WriteLine(User);
-        ServerResponse = await ClientSocket.SendMessage("", 1234, User, chat_input);
-        chat_input = "";
-        /*
-        if (!string.IsNullOrWhiteSpace(ServerResponse))
+        if (string.IsNullOrWhiteSpace(user?.UserName))
         {
-            var message = JsonSerializer.Deserialize<ChatMessage>(ServerResponse);
+            return;
         }
-        */
+        if (string.IsNullOrWhiteSpace(chat_input))
+        {
+            return;
+        }
+
+        User = user.UserName;
+        string messageContent = chat_input;
+
+        var chatMessage = new ChatMessage
+            {
+                User = User,
+                Content = messageContent,
+                Timestamp = DateTime.Now
+            };
+
+        Messages.Add(chatMessage);
+        chat_input = "";
+
+        try
+        {
+            ServerResponse = await ClientSocket.SendMessage("", 1234, User, messageContent);
+        }
+        catch (Exception ex)
+        {
+            Messages.Remove(chatMessage);
+            chat_input = messageContent;
+            Messages.Add(new ChatMessage
+                {
+                    User = "System",
+                    Content = $"Nie udało się wysłać Twojej wiadomości: '{messageContent}'. Spróbuj ponownie. Błąd: {ex.Message}",
+                    Timestamp = DateTime.Now
+                });
+        }
+        StateHasChanged();
     }
-    
+
+    private async Task HandleEnterKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendMessageToServer();
+        }
+    }
 }
-
-<link rel="stylesheet" href="css.css">
-<div class="chat-container">
-    <div class="chat-box">
-        <h3>Czat 1</h3>
-        <div class="messages" id="chat1"></div>
-        <input @bind="chat_input" type="text" id="input1" placeholder="Wpisz wiadomość...">
-        <button @onclick="SendMessageToServer">Wyślij</button>
-    </div>
-
-</div>
