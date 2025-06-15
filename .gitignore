@@ -23,6 +23,22 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+
+client/[Dd]ebug/
+client/[Dd]ebugPublic/
+client/[Rr]elease/
+client/[Rr]eleases/
+client/x64/
+client/x86/
+client/[Ww][Ii][Nn]32/
+client/[Aa][Rr][Mm]/
+client/[Aa][Rr][Mm]64/
+client/bld/
+client/[Bb]in/
+client/[Oo]bj/
+client/[Ll]og/
+client/[Ll]ogs/
+
 # .NET Core
 project.lock.json
 project.fragment.lock.json
