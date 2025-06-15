@@ -68,3 +68,19 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# build
+bin/
+obj/
+
+# systemowe
+*.log
+*.DS_Store
+Thumbs.db
