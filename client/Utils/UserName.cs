@@ -15,14 +15,14 @@ namespace YourUserNamespace
 
         public bool CheckUserName()
         {
-            if (UserName == "admin")
+            if (!string.IsNullOrWhiteSpace(UserName))
             {
                 Console.WriteLine($"Autoryzowano dla {UserName}");
                 return true;
             }
             else
             {
-                Console.WriteLine($"Brak autoryzacji dostępu dla {UserName}");
+                Console.WriteLine($"Brak autoryzacji - użytkownik niezalogowany");
                 return false;
             }
         }
