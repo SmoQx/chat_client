@@ -9,8 +9,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<User>();
-builder.Services.AddSingleton<User>();
+builder.Services.AddSingleton<User>(); // Singleton to maintain state across components
+builder.Services.AddSingleton<WebSocketService>(); // Change to Singleton to maintain connection
 
 var app = builder.Build();
 
@@ -20,10 +20,10 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+
+    // Only use HTTPS redirection in production
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
-
 
 app.UseAntiforgery();
 

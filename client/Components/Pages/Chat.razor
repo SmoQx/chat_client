@@ -1,46 +1,163 @@
+
 @page "/chat"
 @rendermode InteractiveServer
 @inject YourUserNamespace.User user
-@using ClientCommunication
-@using System.Text.Json
+@inject chat_client.Services.WebSocketService webSocketService
 @inject NavigationManager Navigation
 @using ChatMessageNamespace
+@using chat_client.Services
+@implements IDisposable
 
 <PageTitle>Chat</PageTitle>
 
-@if (!user.CheckUserName())
-{
-    Navigation.NavigateTo("/login");
+@{
+    Console.WriteLine($"Chat.razor: Checking user authorization...");
+    bool isAuthorized = user.CheckUserName();
+    Console.WriteLine($"Chat.razor: User authorized = {isAuthorized}, Username = '{user.UserName ?? "NULL"}'");
+    
+    if (!isAuthorized)
+    {
+        Console.WriteLine("Chat.razor: Redirecting to login...");
+        Navigation.NavigateTo("/login");
+        return;
+    }
 }
 
 <link rel="stylesheet" href="css.css">
 <div class="chat-container">
     <div class="chat-box">
-        <h3>Czat 1</h3>
+        <h3>Czat grupowy</h3>
+        
+        @if (!webSocketService.IsConnected)
+        {
+            <div class="connection-status error">
+                Łączenie z serwerem...
+            </div>
+        }
+        else
+        {
+            <div class="connection-status success">
+                Połączono z serwerem
+            </div>
+        }
+
         <div class="messages" id="chat1">
             @foreach (var message in Messages)
             {
-                <div><strong>@message.User:</strong> @message.Content</div>
+                <div class="message @(message.User == "System" ? "system" : "")">
+                    <strong>@message.User:</strong> @message.Content
+                    <span class="timestamp">@message.Timestamp.ToString("HH:mm")</span>
+                </div>
             }
         </div>
-        <input @bind="chat_input" @onkeyup="HandleEnterKey" type="text" id="input1" placeholder="Wpisz wiadomość...">
-        <button @onclick="SendMessageToServer">Wyślij</button>
+        <input @bind="chat_input" @onkeyup="HandleEnterKey" type="text" id="input1" 
+               placeholder="Wpisz wiadomość..." disabled="@(!webSocketService.IsConnected)">
+        <button @onclick="SendMessageToServer" disabled="@(!webSocketService.IsConnected)">
+            Wyślij
+        </button>
     </div>
 </div>
 
 @code {
     private string chat_input { get; set; } = "";
-    private System.Net.IPAddress ipaddress;
     private string User { get; set; } = "";
-    private string ServerResponse = "";
     private List<ChatMessage> Messages = new();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (user.CheckUserName())
         {
             User = user.UserName;
+            await InitializeWebSocketConnection();
         }
+    }
+
+    private async Task InitializeWebSocketConnection()
+    {
+        try
+        {
+            webSocketService.OnMessageReceived += OnMessageReceived;
+            webSocketService.OnSystemMessage += OnSystemMessage;
+            webSocketService.OnConnected += OnWebSocketConnected;
+            webSocketService.OnDisconnected += OnWebSocketDisconnected;
+            webSocketService.OnError += OnWebSocketError;
+
+            if (webSocketService.IsConnected)
+            {
+                AddSystemMessage("Połączono z serwerem - jesteś w czacie!");
+                Console.WriteLine("Chat.razor: Already connected, no need to sign in again");
+            }
+            else
+            {
+                Console.WriteLine("Chat.razor: Not connected, need to connect and sign in");
+                AddSystemMessage("Błąd połączenia - spróbuj zalogować się ponownie");
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/login");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddSystemMessage($"Błąd inicjalizacji: {ex.Message}");
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnMessageReceived(ChatMessage message)
+    {
+        InvokeAsync(() =>
+        {
+            Messages.Add(message);
+            StateHasChanged();
+        });
+    }
+
+    private void OnSystemMessage(string content)
+    {
+        InvokeAsync(() =>
+        {
+            AddSystemMessage(content);
+            StateHasChanged();
+        });
+    }
+
+    private void OnWebSocketConnected()
+    {
+        InvokeAsync(() =>
+        {
+            AddSystemMessage("Połączono z serwerem");
+            StateHasChanged();
+        });
+    }
+
+    private void OnWebSocketDisconnected()
+    {
+        InvokeAsync(() =>
+        {
+            AddSystemMessage("Rozłączono z serwerem");
+            StateHasChanged();
+        });
+    }
+
+    private void OnWebSocketError(string error)
+    {
+        InvokeAsync(() =>
+        {
+            AddSystemMessage($"Błąd połączenia: {error}");
+            StateHasChanged();
+        });
+    }
+
+    private void AddSystemMessage(string content)
+    {
+        Messages.Add(new ChatMessage
+        {
+            User = "System",
+            Content = content,
+            Timestamp = DateTime.Now
+        });
     }
 
     private async Task SendMessageToServer()
@@ -49,40 +166,32 @@
         {
             return;
         }
+        
         if (string.IsNullOrWhiteSpace(chat_input))
         {
             return;
         }
 
-        User = user.UserName;
+        if (!webSocketService.IsConnected)
+        {
+            AddSystemMessage("Nie połączono z serwerem");
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
         string messageContent = chat_input;
-
-        var chatMessage = new ChatMessage
-            {
-                User = User,
-                Content = messageContent,
-                Timestamp = DateTime.Now
-            };
-
-        Messages.Add(chatMessage);
         chat_input = "";
 
         try
         {
-            ServerResponse = await ClientSocket.SendMessage("", 8081, User, messageContent);
+            webSocketService.SendMessage(User, messageContent);
         }
         catch (Exception ex)
         {
-            Messages.Remove(chatMessage);
             chat_input = messageContent;
-            Messages.Add(new ChatMessage
-                {
-                    User = "System",
-                    Content = $"Nie udało się wysłać Twojej wiadomości: '{messageContent}'. Spróbuj ponownie. Błąd: {ex.Message}",
-                    Timestamp = DateTime.Now
-                });
+            AddSystemMessage($"Nie udało się wysłać wiadomości: {ex.Message}");
+            await InvokeAsync(StateHasChanged);
         }
-        StateHasChanged();
     }
 
     private async Task HandleEnterKey(KeyboardEventArgs e)
@@ -91,5 +200,14 @@
         {
             await SendMessageToServer();
         }
+    }
+
+    public void Dispose()
+    {
+        webSocketService.OnMessageReceived -= OnMessageReceived;
+        webSocketService.OnSystemMessage -= OnSystemMessage;
+        webSocketService.OnConnected -= OnWebSocketConnected;
+        webSocketService.OnDisconnected -= OnWebSocketDisconnected;
+        webSocketService.OnError -= OnWebSocketError;
     }
 }

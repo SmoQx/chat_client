@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using WebSocketSharp;
 using ChatMessageNamespace;
+using TeamProject;
 
 namespace ClientCommunication
 {
@@ -102,6 +103,7 @@ namespace ClientCommunication
                     ws.Close();
             }
         }
+
         public static async Task<bool> Register(string username, string password)
         {
             var tcs = new TaskCompletionSource<string>();
