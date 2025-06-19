@@ -1,8 +1,12 @@
 using System;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
+using WebSocketSharp;
+using ChatMessageNamespace;
 
 namespace ClientCommunication
 {
@@ -10,79 +14,92 @@ namespace ClientCommunication
     {
         public static async Task<string> SendMessage(string ip, int port, string user_name, string message)
         {
-            if (ip == "")
+            if (string.IsNullOrWhiteSpace(ip))
             {
                 ip = "127.0.0.1";
             }
-            var ipaddress = IPAddress.Parse(ip);
-            using Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            var point = new IPEndPoint(ipaddress, port);
 
-            try
-            {
-                await socketClient.ConnectAsync(point);
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
+            var tcs = new TaskCompletionSource<string>();
 
-            var jsonMessage = new
+            using var ws = new WebSocket("ws://localhost:8081/chat");
+
+            ws.OnMessage += (sender, e) =>
             {
-                username = user_name,
-                message = message,
-                timestamp = DateTime.Now
+                Console.WriteLine("Server response: " + e.Data);
+                tcs.TrySetResult(e.Data); // Complete the task with server's response
             };
 
-            string json = JsonSerializer.Serialize(jsonMessage);
-            byte[] buffer = Encoding.ASCII.GetBytes(json);
-
-            try
+            ws.OnError += (sender, e) =>
             {
-                socketClient.Send(buffer);
-            }
-            catch (Exception ex)
+                Console.WriteLine("WebSocket error: " + e.Message);
+                tcs.TrySetException(new Exception(e.Message));
+            };
+
+            ws.OnOpen += (sender, e) =>
             {
-                return $"Send error: {ex.Message}";
-            }
+                // Construct message JSON
+                var chatMessage = new
+                {
+                    type = "message",
+                    user = user_name,
+                    content = message,
+                    timestamp = DateTime.Now
+                };
 
-            var result = new byte[1024];
-            int receiveLength = socketClient.Receive(result);
+                string json = JsonSerializer.Serialize(chatMessage);
+                ws.Send(json);
+            };
 
-            socketClient.Shutdown(SocketShutdown.Both);
-            socketClient.Close();
+            ws.Connect();
 
-            return receiveLength > 0 ? Encoding.ASCII.GetString(result, 0, receiveLength) : "No response";
+            return await tcs.Task;
         }
 
-        private static bool CheckAuthorizationToken(Socket socket, string token)
+        public static async Task<bool> CheckAuthorizationToken(string username, string password)
         {
-            var tokenObject = new
+            var tcs = new TaskCompletionSource<string>();
+            using var ws = new WebSocket("ws://localhost:8081/chat");
+
+            ws.OnMessage += (sender, e) =>
             {
-                token = token
+                tcs.TrySetResult(e.Data);
             };
 
-            string jsonToken = JsonSerializer.Serialize(tokenObject);
-            byte[] tokenBuffer = Encoding.ASCII.GetBytes(jsonToken);
+            ws.OnError += (sender, e) =>
+            {
+                tcs.TrySetException(new Exception(e.Message));
+            };
+
+            ws.OnOpen += (sender, e) =>
+            {
+                var signin = new
+                {
+                    type = "signin",
+                    name = username,
+                    password = password,
+                    timestamp = DateTime.Now
+                };
+                string json = JsonSerializer.Serialize(signin);
+                ws.Send(json);
+            };
+
+            ws.Connect();
 
             try
             {
-                // Wysłanie tokenu do serwera.
-                socket.Send(tokenBuffer);
-
-
-                // Odebranie odpowiedzi od serwera.
-                byte[] authResponseBuffer = new byte[1024];
-                int responseLength = socket.Receive(authResponseBuffer);
-                string response = Encoding.ASCII.GetString(authResponseBuffer, 0, responseLength);
-
-                // Jeżeli serwer zwróci "True" (bez względu na wielkość liter), token jest uznawany za poprawny.
-                return response.Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
+                var responseJson = await tcs.Task;  // Wait for server response
+                var response = JsonSerializer.Deserialize<Response>(responseJson);
+                return response != null && response.Success;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Błąd podczas weryfikacji tokenu: " + ex.Message);
+                Console.WriteLine($"Error during authorization: {ex.Message}");
                 return false;
+            }
+            finally
+            {
+                if (ws.IsAlive)
+                    ws.Close();
             }
         }
     }

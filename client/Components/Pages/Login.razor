@@ -4,6 +4,10 @@
 @inject Services.AuthService AuthService 
 @inject NavigationManager NavigationManager 
 @inject YourUserNamespace.User user
+@using ClientCommunication
+@using System.Text.Json
+@using ChatMessageNamespace
+
 
 <div class="login-container">
     <h1>Logowanie</h1>
@@ -33,18 +37,39 @@
         Message = ""; 
         IsError = false;
         
-        // Logika walidacji i logowania
         Console.WriteLine($"Próba logowania: Login: {LoginInput}, Password: {PasswordInput}");
 
-        // ---- Przykładowa logika do testowania bez serwisu ----
-        if (await AuthService.ValidateCredentialsAsync(LoginInput, PasswordInput)) {
-             Message = "Zalogowano poprawnie (test)";
-             user.SetUserName(LoginInput);
-             IsError = false;
-             NavigationManager.NavigateTo("/chat");
-        } else if (!string.IsNullOrEmpty(LoginInput) || !string.IsNullOrEmpty(PasswordInput)) {
-             Message = "Błędny login lub hasło (test)";
-             IsError = true;
+        if (string.IsNullOrWhiteSpace(LoginInput) || string.IsNullOrWhiteSpace(PasswordInput))
+        {
+            Message = "Podaj login i hasło.";
+            IsError = true;
+            return;
+        }
+
+        bool authSuccess = false;
+
+        try
+        {
+            authSuccess = await ClientSocket.CheckAuthorizationToken(LoginInput, PasswordInput);
+        }
+        catch (Exception ex)
+        {
+            Message = $"Błąd połączenia: {ex.Message}";
+            IsError = true;
+            return;
+        }
+
+        if (authSuccess)
+        {
+            Message = "Zalogowano poprawnie.";
+            IsError = false;
+            user.SetUserName(LoginInput);
+            NavigationManager.NavigateTo("/chat");
+        }
+        else
+        {
+            Message = "Błędny login lub hasło.";
+            IsError = true;
         }
     }
 }

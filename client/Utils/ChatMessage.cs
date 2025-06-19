@@ -8,4 +8,9 @@ namespace ChatMessageNamespace
         public string Content { get; set; }
         public DateTime Timestamp { get; set; }
     }
+    public class Response
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+    }
 }
