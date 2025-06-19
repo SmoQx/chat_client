@@ -34,7 +34,7 @@ namespace chat_client.Services
                 }
 
                 Console.WriteLine("WebSocketService: Creating new WebSocket connection");
-                _webSocket = new WebSocket("ws://localhost:8081/chat");
+                _webSocket = new WebSocket("ws://server:8081/chat");
 
                 _webSocket.OnOpen += (sender, e) =>
                 {

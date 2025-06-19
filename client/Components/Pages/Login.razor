@@ -51,6 +51,7 @@
         IsLoggingIn = true;
         
         Console.WriteLine($"Próba logowania: Login: {LoginInput}, Password: {PasswordInput}");
+        user.SetUserName(LoginInput);
 
         if (string.IsNullOrWhiteSpace(LoginInput) || string.IsNullOrWhiteSpace(PasswordInput))
         {
@@ -60,11 +61,13 @@
             return;
         }
 
+        Console.WriteLine($"Próba logowania: Login: {LoginInput}, Password: {PasswordInput}");
         try
         {
             // Connect to WebSocket
             bool connected = await webSocketService.ConnectAsync();
             
+            Console.WriteLine("check connection");
             if (!connected)
             {
                 Message = "Nie udało się połączyć z serwerem.";
@@ -75,6 +78,8 @@
 
             // Try to sign in
             bool authSuccess = await webSocketService.SignInAsync(LoginInput, PasswordInput);
+
+            Console.WriteLine("after auth");
 
             if (authSuccess)
             {
