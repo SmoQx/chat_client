@@ -1,0 +1,24 @@
+services:
+  server:
+    build:
+      context: ./server/WebSocket_Server
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    networks:
+      - chatapp-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - chatapp-network
+    depends_on:
+      - server
+
+networks:
+  chatapp-network:
+    driver: bridge

@@ -170,12 +170,11 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var ws = new WebSocketServer("ws://localhost:8081");
+        var ws = new WebSocketServer("ws://server:8081");
         ws.AddWebSocketService<ChatService>("/chat");
-        ws.Start();
         Console.WriteLine("WebSocket server started on ws://localhost:8081/chat");
-        Console.WriteLine("Press any key to stop the server...");
-        Console.ReadKey(true);
+        ws.Start();
+        Thread.Sleep(Timeout.Infinite); 
         ws.Stop();
     }
 }

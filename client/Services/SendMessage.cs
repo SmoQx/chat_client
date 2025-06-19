@@ -17,12 +17,12 @@ namespace ClientCommunication
         {
             if (string.IsNullOrWhiteSpace(ip))
             {
-                ip = "127.0.0.1";
+                ip = "0.0.0.0";
             }
 
             var tcs = new TaskCompletionSource<string>();
 
-            using var ws = new WebSocket("ws://localhost:8081/chat");
+            using var ws = new WebSocket("ws://server:8081/chat");
 
             ws.OnMessage += (sender, e) =>
             {
@@ -59,7 +59,9 @@ namespace ClientCommunication
         public static async Task<bool> CheckAuthorizationToken(string username, string password)
         {
             var tcs = new TaskCompletionSource<string>();
-            using var ws = new WebSocket("ws://localhost:8081/chat");
+            var addresses = await Dns.GetHostAddressesAsync("server");
+            Console.WriteLine($"server resolves to: {string.Join(", ", addresses.Select(ip => ip.ToString()))}");
+            using var ws = new WebSocket("ws://server:8081/chat");
 
             ws.OnMessage += (sender, e) =>
             {
@@ -107,7 +109,9 @@ namespace ClientCommunication
         public static async Task<bool> Register(string username, string password)
         {
             var tcs = new TaskCompletionSource<string>();
-            using var ws = new WebSocket("ws://localhost:8081/chat");
+            var addresses = await Dns.GetHostAddressesAsync("server");
+            Console.WriteLine($"server resolves to: {string.Join(", ", addresses.Select(ip => ip.ToString()))}");
+            using var ws = new WebSocket("ws://server:8081/chat");
 
             ws.OnMessage += (sender, e) =>
             {
