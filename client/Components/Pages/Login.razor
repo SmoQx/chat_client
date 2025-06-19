@@ -1,7 +1,6 @@
 @page "/login"
 @rendermode InteractiveServer
 @using Services
-@inject Services.AuthService AuthService 
 @inject NavigationManager NavigationManager 
 @inject YourUserNamespace.User user
 @using ClientCommunication
@@ -61,6 +60,7 @@
 
         if (authSuccess)
         {
+            Console.WriteLine("redirect");
             Message = "Zalogowano poprawnie.";
             IsError = false;
             user.SetUserName(LoginInput);

@@ -4,6 +4,9 @@
 @using System.Text.Json
 @inject IWebHostEnvironment Environment 
 @inject NavigationManager NavigationManager 
+@using ClientCommunication
+@using System.Text.Json
+@using ChatMessageNamespace
 
 <div class="register-container">
 
@@ -37,60 +40,39 @@
 
         if (registerModel.Password != registerModel.ConfirmPassword)
         {
-            Message = "Has³a nie s¹ zgodne!";
-            IsError = true;
-            return; // Zakoñcz, jeœli has³a siê nie zgadzaj¹
-        }
-
-        if (string.IsNullOrWhiteSpace(registerModel.Username) || registerModel.Password.Length < 3) // Przyk³adowa walidacja
-        {
-            Message = "Nazwa u¿ytkownika i has³o (min 3 znaki) s¹ wymagane";
+            Message = "Has¿a nie s¿ zgodne!";
             IsError = true;
             return;
         }
 
-        var userToSave = new { Username = registerModel.Username, Password = registerModel.Password };
+        if (string.IsNullOrWhiteSpace(registerModel.Username) || registerModel.Password.Length < 3)
+        {
+            Message = "Nazwa u¿ytkownika i has¿o (min 3 znaki) s¿ wymagane";
+            IsError = true;
+            return;
+        }
 
         try
         {
-            string filePath = Path.Combine(Environment.ContentRootPath, "users.json");
+            bool registered = await ClientSocket.Register(registerModel.Username, registerModel.Password);
 
-            List<object> userList;
-            if (File.Exists(filePath))
+            if (registered)
             {
-                string existingJson = await File.ReadAllTextAsync(filePath);
-                userList = JsonSerializer.Deserialize<List<object>>(existingJson) ?? new List<object>();
+                Message = "Rejestracja zako¿czona pomy¿lnie!";
+                IsError = false;
+                await Task.Delay(1500); // Short delay before redirect
+                NavigationManager.NavigateTo("/login");
             }
             else
             {
-                userList = new List<object>();
-            }
-            if (userList.Any(u => (u as JsonElement?).Value.TryGetProperty("Username", out var name) && name.GetString() == registerModel.Username)) // pobiera z pliku info czy user istnieje
-            {
-                Message = "U¿ytkownik o tej nazwie ju¿ istnieje.";
+                Message = "Rejestracja nie powiod¿a si¿. U¿ytkownik mo¿e ju¿ istnie¿.";
                 IsError = true;
-                return;
             }
-
-
-            userList.Add(userToSave);
-
-            string json = JsonSerializer.Serialize(userList, new JsonSerializerOptions { WriteIndented = true }); // WriteIndented dla ³adnego formatowania
-            await File.WriteAllTextAsync(filePath, json);
-
-            Message = "Rejestracja zakoñczona pomyœlnie!";
-            IsError = false;
-
-            // registerModel = new RegisterModel();
-
-            await Task.Delay(1500); // Krótkie opóŸnienie przed przekierowaniem
-            NavigationManager.NavigateTo("/login");
-
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"B³¹d podczas zapisu do pliku JSON: {ex.Message}");
-            Message = "Wyst¹pi³ b³¹d podczas rejestracji.";
+            Console.WriteLine($"B¿¿d podczas rejestracji: {ex.Message}");
+            Message = "Wyst¿pi¿ b¿¿d podczas rejestracji.";
             IsError = true;
         }
     }

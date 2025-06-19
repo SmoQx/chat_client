@@ -102,5 +102,52 @@ namespace ClientCommunication
                     ws.Close();
             }
         }
+        public static async Task<bool> Register(string username, string password)
+        {
+            var tcs = new TaskCompletionSource<string>();
+            using var ws = new WebSocket("ws://localhost:8081/chat");
+
+            ws.OnMessage += (sender, e) =>
+            {
+                tcs.TrySetResult(e.Data);
+            };
+
+            ws.OnError += (sender, e) =>
+            {
+                tcs.TrySetException(new Exception(e.Message));
+            };
+
+            ws.OnOpen += (sender, e) =>
+            {
+                var signin = new
+                {
+                    type = "signup",
+                    name = username,
+                    password = password,
+                    timestamp = DateTime.Now
+                };
+                string json = JsonSerializer.Serialize(signin);
+                ws.Send(json);
+            };
+
+            ws.Connect();
+
+            try
+            {
+                var responseJson = await tcs.Task;  // Wait for server response
+                var response = JsonSerializer.Deserialize<Response>(responseJson);
+                return response != null && response.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during authorization: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                if (ws.IsAlive)
+                    ws.Close();
+            }
+        }
     }
 }
