@@ -165,8 +165,20 @@
     {
         InvokeAsync(() =>
         {
-            AddSystemMessage(content);
-            StateHasChanged();
+            var isDuplicate = Messages.Any(m => 
+                m.User == "System" && 
+                m.Content == content && 
+                Math.Abs((m.Timestamp - DateTime.Now).TotalSeconds) < 2);
+                
+            if (!isDuplicate)
+            {
+                AddSystemMessage(content);
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"Duplicate system message prevented: {content}");
+            }
         });
     }
 
@@ -235,7 +247,7 @@
         }
         catch (Exception ex)
         {
-            chat_input = messageContent; 
+            chat_input = messageContent;
             AddSystemMessage($"Nie udało się wysłać wiadomości: {ex.Message}");
             await InvokeAsync(StateHasChanged);
         }
