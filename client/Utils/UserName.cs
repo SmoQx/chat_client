@@ -26,5 +26,11 @@ namespace YourUserNamespace
                 return false;
             }
         }
+        public void Logout()
+        {
+            Console.WriteLine($"Wylogowano użytkownika {UserName}");
+            UserName = "";
+        }
+
     }
 }

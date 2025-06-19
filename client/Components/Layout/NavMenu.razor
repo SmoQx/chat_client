@@ -1,4 +1,6 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using YourUserNamespace
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Major</a>
     </div>
@@ -6,13 +8,36 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="nav flex-column">
-	<div class="nav-item px-3">
-	    <NavLink class="nav-link" href="chat">
-		<span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Chat
-	    </NavLink>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="chat">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Chat
+            </NavLink>
         </div>
+
+@if (user.CheckUserName())
+{
+    <div class="nav-item logout px-3">
+        <NavLink class="btn btn-danger w-100" href="/logout">
+            Wyloguj
+        </NavLink>
+    </div>
+}
+
     </nav>
 </div>
+
+@code {
+    [Inject] private User user { get; set; }
+    [Inject] private NavigationManager Navigation { get; set; }
+
+    private async Task Logout()
+    {
+        user.Logout();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+
+}
 

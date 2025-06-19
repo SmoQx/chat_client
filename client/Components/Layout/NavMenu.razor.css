@@ -95,3 +95,22 @@
         overflow-y: auto;
     }
 }
+
+.nav-scrollable {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 3.5rem); /* cała wysokość ekranu - pasek top */
+    overflow-y: auto;
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+
+.nav-item.logout {
+    margin-top: auto;
+    padding: 10px;
+}
