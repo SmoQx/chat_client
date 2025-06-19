@@ -1,4 +1,3 @@
-
 @page "/chat"
 @rendermode InteractiveServer
 @inject YourUserNamespace.User user
@@ -6,6 +5,7 @@
 @inject NavigationManager Navigation
 @using ChatMessageNamespace
 @using chat_client.Services
+@using System.Linq
 @implements IDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -76,6 +76,14 @@
     {
         try
         {
+            Console.WriteLine($"Chat.InitializeWebSocketConnection: IsConnected = {webSocketService.IsConnected}");
+            
+            webSocketService.OnMessageReceived -= OnMessageReceived;
+            webSocketService.OnSystemMessage -= OnSystemMessage;
+            webSocketService.OnConnected -= OnWebSocketConnected;
+            webSocketService.OnDisconnected -= OnWebSocketDisconnected;
+            webSocketService.OnError -= OnWebSocketError;
+            
             webSocketService.OnMessageReceived += OnMessageReceived;
             webSocketService.OnSystemMessage += OnSystemMessage;
             webSocketService.OnConnected += OnWebSocketConnected;
@@ -89,14 +97,40 @@
             }
             else
             {
-                Console.WriteLine("Chat.razor: Not connected, need to connect and sign in");
-                AddSystemMessage("Błąd połączenia - spróbuj zalogować się ponownie");
-                await Task.Delay(2000);
-                Navigation.NavigateTo("/login");
+                Console.WriteLine("Chat.razor: Not connected, attempting to connect...");
+                AddSystemMessage("Łączenie z serwerem...");
+                await InvokeAsync(StateHasChanged);
+                
+                bool connected = await webSocketService.ConnectAsync();
+                
+                if (connected)
+                {
+                    Console.WriteLine("Chat.razor: Connected successfully, trying to sign in...");
+                    bool signedIn = await webSocketService.SignInAsync(User, "dummy_password");
+                    
+                    if (signedIn)
+                    {
+                        AddSystemMessage("Zalogowano do czatu!");
+                    }
+                    else
+                    {
+                        AddSystemMessage("Błąd logowania do czatu");
+                        await Task.Delay(3000);
+                        Navigation.NavigateTo("/login");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Chat.razor: Failed to connect");
+                    AddSystemMessage("Nie udało się połączyć z serwerem");
+                    await Task.Delay(3000);
+                    Navigation.NavigateTo("/login");
+                }
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Chat.InitializeWebSocketConnection error: {ex.Message}");
             AddSystemMessage($"Błąd inicjalizacji: {ex.Message}");
         }
         finally
@@ -109,8 +143,21 @@
     {
         InvokeAsync(() =>
         {
-            Messages.Add(message);
-            StateHasChanged();
+            // tutaj sobie zapobiegamy duplikatom
+            var isDuplicate = Messages.Any(m => 
+                m.User == message.User && 
+                m.Content == message.Content && 
+                Math.Abs((m.Timestamp - message.Timestamp).TotalSeconds) < 1);
+                
+            if (!isDuplicate)
+            {
+                Messages.Add(message);
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"Duplicate message prevented: {message.User}: {message.Content}");
+            }
         });
     }
 
@@ -188,7 +235,7 @@
         }
         catch (Exception ex)
         {
-            chat_input = messageContent;
+            chat_input = messageContent; 
             AddSystemMessage($"Nie udało się wysłać wiadomości: {ex.Message}");
             await InvokeAsync(StateHasChanged);
         }
