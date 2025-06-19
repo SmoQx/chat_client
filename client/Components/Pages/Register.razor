@@ -14,9 +14,9 @@
 
     <form class="pure-form" @onsubmit="HandleRegister" @onsubmit:preventDefault>
 
-        <input @bind="registerModel.Username" type="text" placeholder="Nazwa u¿ytkownika" required />
-        <input @bind="registerModel.Password" type="password" placeholder="Has³o" required />
-        <input @bind="registerModel.ConfirmPassword" type="password" placeholder="Powtórz has³o" required />
+        <input @bind="registerModel.Username" type="text" placeholder="Nazwa uÅ¼ytkownika" required />
+        <input @bind="registerModel.Password" type="password" placeholder="HasÅ‚o" required />
+        <input @bind="registerModel.ConfirmPassword" type="password" placeholder="PowtÃ³rz hasÅ‚o" required />
 
         <button type="submit"><i class="fa fa-user-plus"></i> Zarejestruj</button>
     </form>
@@ -40,14 +40,14 @@
 
         if (registerModel.Password != registerModel.ConfirmPassword)
         {
-            Message = "Has¿a nie s¿ zgodne!";
+            Message = "HasÅ‚a nie sÄ… zgodne!";
             IsError = true;
             return;
         }
 
         if (string.IsNullOrWhiteSpace(registerModel.Username) || registerModel.Password.Length < 3)
         {
-            Message = "Nazwa u¿ytkownika i has¿o (min 3 znaki) s¿ wymagane";
+            Message = "Nazwa uÅ¼ytkownika i hasÅ‚o (min 3 znaki) sÄ… wymagane";
             IsError = true;
             return;
         }
@@ -58,21 +58,21 @@
 
             if (registered)
             {
-                Message = "Rejestracja zako¿czona pomy¿lnie!";
+                Message = "Rejestracja zakoÅ„czona pomyÅ›lnie!";
                 IsError = false;
-                await Task.Delay(1500); // Short delay before redirect
+                await Task.Delay(2500); // Short delay before redirect
                 NavigationManager.NavigateTo("/login");
             }
             else
             {
-                Message = "Rejestracja nie powiod¿a si¿. U¿ytkownik mo¿e ju¿ istnie¿.";
+                Message = "Rejestracja nie powiodÅ‚a siÄ™. UÅ¼ytkownik moÅ¼e juÅ¼ istnieje.";
                 IsError = true;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"B¿¿d podczas rejestracji: {ex.Message}");
-            Message = "Wyst¿pi¿ b¿¿d podczas rejestracji.";
+            Console.WriteLine($"BÅ‚Ä…d podczas rejestracji: {ex.Message}");
+            Message = "WystÄ…piÅ‚ bÅ‚Ä…d podczas rejestracji.";
             IsError = true;
         }
     }
