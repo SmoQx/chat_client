@@ -18,7 +18,7 @@ Aplikacja wykorzystuje architekturę klient-serwer z komunikacją WebSocket, co 
 
 ### Technologie Główne
 - **.NET 9.0** - Framework aplikacyjny
-- **C#** - Język programowania (nie Java jak wspomniano w zadaniu)
+- **C#** - Język programowania
 - **Blazor Server** - Framework dla interfejsu użytkownika
 - **WebSocket** - Protokół komunikacji w czasie rzeczywistym
 - **Docker** - Konteneryzacja aplikacji
