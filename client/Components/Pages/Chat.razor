@@ -1,5 +1,5 @@
 @page "/chat"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject YourUserNamespace.User user
 @inject chat_client.Services.WebSocketService webSocketService
 @inject NavigationManager Navigation
@@ -7,6 +7,8 @@
 @using chat_client.Services
 @using System.Linq
 @implements IDisposable
+@inject IJSRuntime JS
+@using System.Text.Json
 
 <PageTitle>Chat</PageTitle>
 
@@ -18,6 +20,7 @@
     if (!isAuthorized)
     {
         Console.WriteLine("Chat.razor: Redirecting to login...");
+        Messages.Clear();
         Navigation.NavigateTo("/login");
         return;
     }
@@ -42,7 +45,7 @@
         }
 
         <div class="messages" id="chat1">
-            @foreach (var message in Messages)
+            @foreach (var message in Messages.OrderBy(m => m.Timestamp))
             {
                 <div class="message @(message.User == "System" ? "system" : "")">
                     <strong>@message.User:</strong> @message.Content
@@ -68,7 +71,42 @@
         if (user.CheckUserName())
         {
             User = user.UserName;
+            Messages.Clear();
+            await LoadLocalHistory();
             await InitializeWebSocketConnection();
+        }
+    }
+    private async Task LoadLocalHistory()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "chat_history");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var localMessages = JsonSerializer.Deserialize<List<ChatMessage>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (localMessages != null)
+                {
+                    Messages.AddRange(localMessages);
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading history from LocalStorage: {ex.Message}");
+        }
+    }
+
+    private async Task SaveLocalHistory()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(Messages, new JsonSerializerOptions { WriteIndented = true });
+            await JS.InvokeVoidAsync("localStorage.setItem", "chat_history", json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving history to LocalStorage: {ex.Message}");
         }
     }
 
@@ -92,6 +130,8 @@
 
             if (webSocketService.IsConnected)
             {
+                Messages.Clear();
+                await LoadLocalHistory();
                 AddSystemMessage("Połączono z serwerem - jesteś w czacie!");
                 Console.WriteLine("Chat.razor: Already connected, no need to sign in again");
             }
@@ -106,6 +146,8 @@
                 if (connected)
                 {
                     Console.WriteLine("Chat.razor: Connected successfully, trying to sign in...");
+                    Messages.Clear();
+                    await LoadLocalHistory();
                     bool signedIn = await webSocketService.SignInAsync(User, "dummy_password");
                     
                     if (signedIn)
@@ -141,7 +183,7 @@
 
     private void OnMessageReceived(ChatMessage message)
     {
-        InvokeAsync(() =>
+        InvokeAsync(async () =>
         {
             // tutaj sobie zapobiegamy duplikatom
             var isDuplicate = Messages.Any(m => 
@@ -152,6 +194,7 @@
             if (!isDuplicate)
             {
                 Messages.Add(message);
+                await SaveLocalHistory();
                 StateHasChanged();
             }
             else
@@ -163,7 +206,7 @@
 
     private void OnSystemMessage(string content)
     {
-        InvokeAsync(() =>
+        InvokeAsync(async () =>
         {
             var isDuplicate = Messages.Any(m => 
                 m.User == "System" && 
@@ -173,6 +216,7 @@
             if (!isDuplicate)
             {
                 AddSystemMessage(content);
+                await SaveLocalHistory();
                 StateHasChanged();
             }
             else
@@ -196,6 +240,7 @@
         InvokeAsync(() =>
         {
             AddSystemMessage("Rozłączono z serwerem");
+            Messages.Clear();
             StateHasChanged();
         });
     }

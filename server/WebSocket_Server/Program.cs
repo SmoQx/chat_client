@@ -7,6 +7,8 @@ using TeamProject;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Concurrent;
+using System.IO;
+using System.Collections.Generic;
 
 namespace WebSocket_Server;
 
@@ -18,9 +20,14 @@ public class ChatService : WebSocketBehavior
 
     private string? userId;
 
+    private static readonly string HistoryFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chat_history.json");
+
+    private static readonly object FileLock = new object();
+
     protected override void OnOpen()
     {
         Console.WriteLine($"Client connected: {ID}");
+        EnsureHistoryFileExists();
     }
 
     protected override void OnClose(CloseEventArgs e)
@@ -68,6 +75,7 @@ public class ChatService : WebSocketBehavior
                             Console.WriteLine($"User signed in: {userId}");
 
                             BroadcastSystemMessage($"{userId} dołączył do chatu");
+                            SendChatHistory();
                         }
 
                         Send(JsonSerializer.Serialize(response));
@@ -95,7 +103,7 @@ public class ChatService : WebSocketBehavior
                             Content = messageContent,
                             Timestamp = messageTimestamp
                         };
-
+                        SaveMessageToHistory(chatMsg);
                         BroadcastMessage(chatMsg);
                         break;
                     }
@@ -115,6 +123,80 @@ public class ChatService : WebSocketBehavior
     {
         Console.WriteLine("Error: " + e.Message);
     }
+
+    private void EnsureHistoryFileExists()
+    {
+        lock (FileLock)
+        {
+            if (!File.Exists(HistoryFilePath))
+            {
+                try
+                {
+                    File.WriteAllText(HistoryFilePath, JsonSerializer.Serialize(new List<ChatMessage>(), new JsonSerializerOptions { WriteIndented = true }));
+                    Console.WriteLine($"History file created in: {HistoryFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error creating history file: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private void SaveMessageToHistory(ChatMessage message)
+    {
+        lock (FileLock)
+        {
+            List<ChatMessage> history;
+            try
+            {
+                if (File.Exists(HistoryFilePath))
+                {
+                    var json = File.ReadAllText(HistoryFilePath);
+                    history = JsonSerializer.Deserialize<List<ChatMessage>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ChatMessage>();
+                }
+                else
+                {
+                    history = new List<ChatMessage>();
+                }
+
+                history.Add(message);
+                File.WriteAllText(HistoryFilePath, JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.Message}");
+            }
+        }
+    }
+
+    private void SendChatHistory()
+    {
+        lock (FileLock)
+        {
+                if (File.Exists(HistoryFilePath))
+                {
+                    var json = File.ReadAllText(HistoryFilePath);
+                    Console.WriteLine($"History file read in {json}");
+                    var history = JsonSerializer.Deserialize<List<ChatMessage>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (history != null && history.Count > 0)
+                    {
+                        foreach (var msg in history)
+                        {
+                            var messageJson = JsonSerializer.Serialize(new
+                            {
+                                type = "chat_message",
+                                user = msg.User,
+                                content = msg.Content,
+                                timestamp = msg.Timestamp
+                            });
+                            Send(messageJson);
+                        }
+                    }
+                }
+        }
+    }
+
 
     private void BroadcastMessage(ChatMessage message)
     {
