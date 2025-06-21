@@ -9,6 +9,7 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Collections.Generic;
+using UdpServerPropagation;
 
 namespace WebSocket_Server;
 
@@ -250,8 +251,11 @@ public class ChatService : WebSocketBehavior
 
 public class Program
 {
+
     public static void Main(string[] args)
     {
+        var udpPropagation = new ServerPropagationProcess(10000, "ChatServer", 8081);
+        udpPropagation.Start();
         var ws = new WebSocketServer("ws://server:8081");
         ws.AddWebSocketService<ChatService>("/chat");
         Console.WriteLine("WebSocket server started on ws://localhost:8081/chat");
@@ -259,4 +263,6 @@ public class Program
         Thread.Sleep(Timeout.Infinite); 
         ws.Stop();
     }
+
+
 }
