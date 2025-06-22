@@ -456,3 +456,59 @@ docker-compose logs -f
 - Implementacja pokojów czatu
 - Dodanie wysyłania plików
 - Integracja z bazą danych
+
+# Rozszerzenia bezpieczeństwa i sieciowe
+
+## 1. Hashowanie haseł użytkowników
+
+W module `Authentication` wprowadzono bezpieczne haszowanie haseł użytkowników przy użyciu algorytmu **SHA-256** zakodowanego w **Base64**.
+
+- **Podczas rejestracji** (`SignUp`): hasło jest haszowane przez `HashPassword` i zapisywane w `UserRecord.PasswordHash` w pliku `storage.json`.
+- **Podczas logowania** (`SignIn`): hasło podane przez użytkownika jest również haszowane i porównywane z zapisanym hashem.
+
+**Efekt:** Hasła nigdy nie są przechowywane ani przesyłane w formie jawnej.
+
+---
+
+## 2. Blokada konta po 3 nieudanych próbach logowania
+
+Dodano zabezpieczenie przed atakami typu brute-force:
+
+- Każda nieudana próba logowania zwiększa licznik `FailedAttempts`.
+- Po trzeciej błędnej próbie konto zostaje zablokowane (`IsLocked = true`), a `LockTime` zapisywana jest jako czas blokady.
+- Blokada trwa **30 minut**, po czym użytkownik może ponowić próbę logowania.
+
+**Dane przechowywane w `UserRecord`:**
+- `FailedAttempts`
+- `IsLocked`
+- `LockTime`
+
+---
+
+## 3. Rejestrowanie zdarzeń logowania
+
+System loguje wszystkie istotne zdarzenia związane z logowaniem użytkowników w pliku `login_events.log`:
+
+- **Zdarzenia zapisywane:**
+  - Rejestracje
+  - Próby logowania (udane i nieudane)
+  - Zablokowanie konta
+- **Struktura wpisu:** zawiera datę, login użytkownika i opis zdarzenia.
+
+**Cel:** ułatwienie audytu oraz analiza incydentów bezpieczeństwa.
+
+---
+
+## 4. Wykrywanie serwerów przez UDP (Discovery)
+
+Dodano mechanizm automatycznego wykrywania serwera czatu w sieci LAN za pomocą broadcastu UDP.
+
+- **Serwer:**  
+  Klasa `ServerPropagationProcess` wysyła co 2 sekundy pakiet UDP (JSON) zawierający:
+  - `serverChatName`
+  - `serverChatPort`
+  - `ID`
+- **Klient:**  
+  Klasa `DiscoverAvaiableServers` nasłuchuje na porcie UDP. Po otrzymaniu broadcastu, dodaje serwer do listy dostępnych. Użytkownik może z listy wybrać serwer do połączenia przez WebSocket.
+
+**Korzyść:** użytkownik nie musi ręcznie wpisywać adresu IP serwera.
