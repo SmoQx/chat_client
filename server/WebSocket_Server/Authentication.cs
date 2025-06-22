@@ -1,11 +1,17 @@
 using System.Text.Json;
+using BCrypt.Net;
 
 namespace TeamProject;
 
 public class Authentication
 {
     private const string StorageFileName = "storage.json";
+    private const string LogFileName = "auth_logs.log";
     private readonly Dictionary<string, string> _storage = new();
+    private readonly Dictionary<string, int> _failedAttempts = new();
+    private readonly Dictionary<string, DateTime> _blockedUntil = new();
+    private const int MaxFailedAttempts = 3;
+    private const int BlockDurationMinutes = 1;
     
     public Authentication()
     {
@@ -20,6 +26,18 @@ public class Authentication
                 foreach (var item in storageAsList)
                 {
                     _storage[item["name"]] = item["password"];
+                    
+                    if (item.TryGetValue("failed_attempts", out var failedAttemptsStr) && 
+                        int.TryParse(failedAttemptsStr, out var failedAttempts))
+                    {
+                        _failedAttempts[item["name"]] = failedAttempts;
+                    }
+                    
+                    if (item.TryGetValue("blocked_until", out var blockedUntilStr) && 
+                        DateTime.TryParse(blockedUntilStr, out var blockedUntil))
+                    {
+                        _blockedUntil[item["name"]] = blockedUntil;
+                    }
                 }
             }
 
@@ -35,11 +53,26 @@ public class Authentication
 
     private void SaveToFile()
     {
-         var storageAsList = _storage.Select(user => new Dictionary<string, string> 
-        { 
-            { "name", user.Key }, 
-            { "password", user.Value } 
-        }).ToList();
+         var storageAsList = _storage.Select(user => 
+         {
+             var userDict = new Dictionary<string, string>
+             {
+                 { "name", user.Key }, 
+                 { "password", user.Value }
+             };
+             
+             if (_failedAttempts.TryGetValue(user.Key, out var attempts))
+             {
+                 userDict["failed_attempts"] = attempts.ToString();
+             }
+             
+             if (_blockedUntil.TryGetValue(user.Key, out var blockedUntil))
+             {
+                 userDict["blocked_until"] = blockedUntil.ToString("yyyy-MM-dd HH:mm:ss");
+             }
+             
+             return userDict;
+         }).ToList();
         
         var jsonString = JsonSerializer.Serialize(storageAsList, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(StorageFileName, jsonString);
@@ -52,16 +85,33 @@ public class Authentication
             return new Response(false, "Username and password are required!");
         }
 
+        if (IsAccountBlocked(name))
+        {
+            LogEvent($"BLOCKED_LOGIN_ATTEMPT: User '{name}' tried to login while account is blocked");
+            return new Response(false, "Account is temporarily blocked due to too many failed login attempts!");
+        }
+
         var isUserInStorage = _storage.TryGetValue(name, out var storagePassword);
 
         if (!isUserInStorage)
         {
+            RecordFailedAttempt(name);
+            LogEvent($"FAILED_LOGIN: User '{name}' not found");
             return new Response(false, "User does not exist!");
         }
         
-        return storagePassword == password ? 
-            new Response(true, "Logged in!") : 
-            new Response(false, "Credentials mismatch!");
+        if (BCrypt.Net.BCrypt.Verify(password, storagePassword))
+        {
+            ResetFailedAttempts(name);
+            LogEvent($"SUCCESSFUL_LOGIN: User '{name}' logged in successfully");
+            return new Response(true, "Logged in!");
+        }
+        else
+        {
+            RecordFailedAttempt(name);
+            LogEvent($"FAILED_LOGIN: Invalid password for user '{name}'");
+            return new Response(false, "Credentials mismatch!");
+        }
     }
 
     public Response SignUp(string name, string password)
@@ -83,9 +133,64 @@ public class Authentication
             return new Response(false, "User already exists!");
         }
         
-        _storage.Add(name, password);
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+        _storage.Add(name, hashedPassword);
         SaveToFile();
+        LogEvent($"SUCCESSFUL_SIGNUP: User '{name}' registered successfully");
         return new Response(true, "Signed up!");
+    }
+
+    private bool IsAccountBlocked(string name)
+    {
+        if (_blockedUntil.TryGetValue(name, out var blockedUntil))
+        {
+            if (DateTime.Now < blockedUntil)
+            {
+                return true;
+            }
+            _blockedUntil.Remove(name);
+            _failedAttempts.Remove(name);
+            SaveToFile();
+            LogEvent($"ACCOUNT_UNBLOCKED: User '{name}' account unblocked after timeout");
+        }
+        return false;
+    }
+
+    private void RecordFailedAttempt(string name)
+    {
+        _failedAttempts.TryGetValue(name, out var attempts);
+        attempts++;
+        _failedAttempts[name] = attempts;
+
+        if (attempts >= MaxFailedAttempts)
+        {
+            _blockedUntil[name] = DateTime.Now.AddMinutes(BlockDurationMinutes);
+            LogEvent($"ACCOUNT_BLOCKED: User '{name}' account blocked for {BlockDurationMinutes} minutes after {MaxFailedAttempts} failed attempts");
+        }
+        
+        SaveToFile();
+    }
+
+    private void ResetFailedAttempts(string name)
+    {
+        _failedAttempts.Remove(name);
+        _blockedUntil.Remove(name);
+        SaveToFile();
+    }
+
+    private void LogEvent(string message)
+    {
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        var logEntry = $"[{timestamp}] {message}";
+        
+        try
+        {
+            File.AppendAllText(LogFileName, logEntry + Environment.NewLine);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to write to log file: {ex.Message}");
+        }
     }
 }
 
