@@ -12,6 +12,7 @@ namespace chat_client.Services
         private WebSocket? _webSocket;
         private bool _isConnected = false;
         private TaskCompletionSource<bool>? _signInTcs;
+        private string? _lastSignInErrorMessage;
 
         public event Action<ChatMessage>? OnMessageReceived;
         public event Action<string>? OnSystemMessage;
@@ -20,6 +21,7 @@ namespace chat_client.Services
         public event Action<string>? OnError;
 
         public bool IsConnected => _isConnected;
+        public string? LastSignInErrorMessage => _lastSignInErrorMessage;
 
         public async Task<bool> ConnectAsync()
         {
@@ -85,6 +87,7 @@ namespace chat_client.Services
                 return false;
             }
 
+            _lastSignInErrorMessage = null;
             _signInTcs = new TaskCompletionSource<bool>();
 
             var signInMessage = new
@@ -127,7 +130,7 @@ namespace chat_client.Services
         {
             if (!_isConnected || _webSocket == null)
             {
-                OnError?.Invoke("Nie po³¹czono z serwerem");
+                OnError?.Invoke("Nie poï¿½ï¿½czono z serwerem");
                 return;
             }
 
@@ -156,6 +159,12 @@ namespace chat_client.Services
                     // This is a Response object (sign-in response)
                     var response = JsonSerializer.Deserialize<Response>(jsonData);
                     Console.WriteLine($"SignIn response: Success={response?.Success}, Message={response?.Message}");
+                    
+                    if (response?.Success == false)
+                    {
+                        _lastSignInErrorMessage = response.Message;
+                    }
+                    
                     _signInTcs.SetResult(response?.Success ?? false);
                     return;
                 }

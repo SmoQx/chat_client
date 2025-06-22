@@ -98,7 +98,15 @@
             }
             else
             {
-                Message = "Błędny login lub hasło.";
+                var errorMessage = webSocketService.LastSignInErrorMessage;
+                if (!string.IsNullOrEmpty(errorMessage) && errorMessage.Contains("temporarily blocked"))
+                {
+                    Message = "Konto zostało tymczasowo zablokowane z powodu zbyt wielu nieudanych prób logowania. Spróbuj ponownie za 1 minutę.";
+                }
+                else
+                {
+                    Message = "Błędny login lub hasło.";
+                }
                 IsError = true;
                 webSocketService.Disconnect(); // Disconnect on failed login
             }

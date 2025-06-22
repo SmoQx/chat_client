@@ -28,6 +28,7 @@ Aplikacja wykorzystuje architekturę klient-serwer z komunikacją WebSocket, co 
 #### Serwer WebSocket
 ```xml
 <PackageReference Include="websocketsharp.core" Version="1.0.1" />
+<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 ```
 
 #### Klient Web
@@ -68,8 +69,13 @@ Obsługiwane typy wiadomości:
 - `signin` - Logowanie użytkownika
 - `message` - Wysyłanie wiadomości czatu
 
-**Authentication.cs** - System uwierzytelniania
+**Authentication.cs** - Zaawansowany system uwierzytelniania i bezpieczeństwa
 - Przechowywanie użytkowników w pliku `storage.json`
+- **Haszowanie haseł** przy użyciu algorytmu BCrypt
+- **System blokady kont** - automatyczna blokada po 3 nieudanych próbach logowania na 1 minutę
+- **Trwałe przechowywanie stanu blokad** - stan blokady zachowywany po restarcie serwera
+- **Logowanie zdarzeń autoryzacji** do pliku `auth_logs.log`
+- Automatyczne odblokowanie kont po upływie czasu blokady
 - Metody `SignIn()` i `SignUp()` dla autoryzacji
 - Automatyczne ładowanie i zapisywanie danych
 
@@ -210,12 +216,60 @@ services:
 [
   {
     "name": "username",
-    "password": "password"
+    "password": "$2a$11$hashed_password_using_bcrypt",
+    "failed_attempts": "2",
+    "blocked_until": "2024-01-01 12:30:00"
   }
 ]
 ```
 
-## 6. Użytkowanie
+**server/auth_logs.log:** (automatycznie generowany)
+```
+[2024-01-01 12:00:00] SUCCESSFUL_LOGIN: User 'username' logged in successfully
+[2024-01-01 12:01:00] FAILED_LOGIN: Invalid password for user 'username'
+[2024-01-01 12:02:00] ACCOUNT_BLOCKED: User 'username' account blocked for 1 minutes after 3 failed attempts
+[2024-01-01 12:03:00] ACCOUNT_UNBLOCKED: User 'username' account unblocked after timeout
+```
+
+## 6. System Bezpieczeństwa
+
+### Funkcje Bezpieczeństwa
+
+#### Haszowanie Haseł
+- Wszystkie hasła są zabezpieczane przy użyciu **algorytmu BCrypt**
+- Hasła są automatycznie haszowane podczas rejestracji
+- Weryfikacja haseł odbywa się poprzez porównanie hashy
+
+#### System Blokady Kont
+- **Automatyczna blokada** po 3 nieudanych próbach logowania
+- **Czas blokady:** 1 minuta
+- **Trwałość blokady:** stan zachowywany po restarcie serwera
+- **Automatyczne odblokowanie:** po upływie czasu blokady
+
+#### Logowanie Zdarzeń Autoryzacji
+Wszystkie zdarzenia związane z autoryzacją są logowane do pliku `auth_logs.log`:
+- Udane logowania
+- Nieudane próby logowania
+- Blokady kont
+- Automatyczne odblokowania kont
+- Rejestracje nowych użytkowników
+
+#### Typy Logowanych Zdarzeń
+- `SUCCESSFUL_LOGIN` - Pomyślne logowanie
+- `FAILED_LOGIN` - Nieudana próba logowania
+- `ACCOUNT_BLOCKED` - Blokada konta
+- `ACCOUNT_UNBLOCKED` - Odblokowanie konta
+- `SUCCESSFUL_SIGNUP` - Pomyślna rejestracja
+- `BLOCKED_LOGIN_ATTEMPT` - Próba logowania na zablokowane konto
+
+#### Konfiguracja Bezpieczeństwa
+```csharp
+// W pliku Authentication.cs
+private const int MaxFailedAttempts = 3;        // Maksymalnie 3 próby
+private const int BlockDurationMinutes = 1;     // Blokada na 1 minutę
+```
+
+## 7. Użytkowanie
 
 ### Uruchomienie Aplikacji
 
