@@ -502,7 +502,6 @@ docker-compose logs -f
 
 ### Wydajność
 - Aktualnie brak limitów połączeń
-- Brak persystencji wiadomości
 - Zalecane dodanie bazy danych dla większej skalowalności
 
 ### Rozwój
